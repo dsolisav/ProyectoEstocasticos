@@ -1,0 +1,10 @@
+# Requirements for Probabilistic Programming Bot Detection System
+# Python 3.13 or higher required
+
+# Core dependencies
+numpy>=2.0.0
+matplotlib>=3.10.0
+
+# Testing dependencies
+pytest>=8.0.0
+pytest-cov>=4.1.0
