@@ -94,14 +94,15 @@ class BotDetector:
                 cust_id = login_id.origin.customer_id
                 accounts_per_customer[cust_id] = accounts_per_customer.get(cust_id, 0) + 1
         
-        # Contar recommendations por customer
-        recs_per_customer = {}
+        # Obtener ratings por customer
+        ratings_per_customer = {}
         for rec in recommendations:
-            # Encontrar customer del LoginID
             login = next((l for l in login_ids if l.login_id == rec.login_id), None)
             if login and login.origin:
                 cust_id = login.origin.customer_id
-                recs_per_customer[cust_id] = recs_per_customer.get(cust_id, 0) + 1
+                if cust_id not in ratings_per_customer:
+                    ratings_per_customer[cust_id] = []
+                ratings_per_customer[cust_id].append(rec.rating)
         
         scores = []
         
@@ -112,58 +113,123 @@ class BotDetector:
             if honest_var not in grounded.variables:
                 continue
             
+            # Obtener datos de este customer
+            customer_ratings = ratings_per_customer.get(customer.customer_id, [])
+            num_accounts = accounts_per_customer.get(customer.customer_id, 1)
+            num_ratings = len(customer_ratings)
+            
+            # Calcular features de comportamiento
+            behavior_features = self._compute_behavior_features(customer_ratings)
+            
             # Query: P(Honest = False | recommendations)
-            # Si Honest = False, más probable que sea bot
             try:
                 result = query_engine.query_marginal(
                     variable=honest_var,
-                    evidence={},  # Evidencia implícita en las recommendations
+                    evidence={},
                     method='gibbs',
                     num_samples=num_samples,
                     burn_in=400
                 )
-                
-                # P(dishonest) como proxy de P(bot)
                 dishonest_prob = result.distribution.get(False, 0.5)
-                
-                # Factores adicionales:
-                # - Múltiples cuentas aumentan probabilidad de bot
-                num_accounts = accounts_per_customer.get(customer.customer_id, 1)
-                sybil_factor = min(1.0, num_accounts / 3.0) if num_accounts > 1 else 0.0
-                
-                # Score combinado
-                bot_prob = 0.7 * dishonest_prob + 0.3 * sybil_factor
-                
-                # Clasificación
-                prediction = EntityType.BOT if bot_prob >= self.threshold else EntityType.REAL_USER
-                
-                # Confidence = qué tan lejos está del threshold
-                confidence = abs(bot_prob - self.threshold)
-                
-                scores.append(BotScore(
-                    customer_id=customer.customer_id,
-                    entity_type=customer.entity_type,
-                    bot_probability=bot_prob,
-                    prediction=prediction,
-                    confidence=confidence,
-                    num_accounts=num_accounts,
-                    recommendations_count=recs_per_customer.get(customer.customer_id, 0)
-                ))
-                
-            except Exception as e:
-                # Si falla la inferencia, usar heurística simple
-                num_accounts = accounts_per_customer.get(customer.customer_id, 1)
-                bot_prob = 0.8 if num_accounts > 3 else 0.2
-                
-                scores.append(BotScore(
-                    customer_id=customer.customer_id,
-                    entity_type=customer.entity_type,
-                    bot_probability=bot_prob,
-                    prediction=EntityType.BOT if bot_prob >= self.threshold else EntityType.REAL_USER,
-                    confidence=0.1,
-                    num_accounts=num_accounts,
-                    recommendations_count=recs_per_customer.get(customer.customer_id, 0)
-                ))
+            except Exception:
+                dishonest_prob = 0.5
+            
+            # Calcular score combinado
+            bot_prob = self._compute_combined_score(
+                dishonest_prob=dishonest_prob,
+                num_accounts=num_accounts,
+                behavior_features=behavior_features
+            )
+            
+            prediction = EntityType.BOT if bot_prob >= self.threshold else EntityType.REAL_USER
+            confidence = abs(bot_prob - self.threshold)
+            
+            scores.append(BotScore(
+                customer_id=customer.customer_id,
+                entity_type=customer.entity_type,
+                bot_probability=bot_prob,
+                prediction=prediction,
+                confidence=confidence,
+                num_accounts=num_accounts,
+                recommendations_count=num_ratings
+            ))
+        
+        # Ordenar por probabilidad descendente
+        scores.sort(key=lambda x: x.bot_probability, reverse=True)
+        
+        return scores
+    
+    def _compute_behavior_features(self, ratings: List[int]) -> dict:
+        """Calcular features de comportamiento a partir de ratings."""
+        if not ratings:
+            return {'extreme_ratio': 0.0, 'variance': 0.0, 'mean': 3.0, 'count': 0}
+        
+        extreme_count = sum(1 for r in ratings if r in [1, 5])
+        extreme_ratio = extreme_count / len(ratings)
+        mean = sum(ratings) / len(ratings)
+        variance = sum((r - mean) ** 2 for r in ratings) / len(ratings)
+        
+        return {
+            'extreme_ratio': extreme_ratio,
+            'variance': variance,
+            'mean': mean,
+            'count': len(ratings)
+        }
+    
+    def _compute_combined_score(self, 
+                                dishonest_prob: float,
+                                num_accounts: int,
+                                behavior_features: dict) -> float:
+        """Calcular score combinado de probabilidad de ser bot."""
+        # Factor 1: Modelo probabilistico
+        model_score = dishonest_prob
+        
+        # Factor 2: Sybil attacks
+        if num_accounts <= 1:
+            sybil_score = 0.0
+        elif num_accounts <= 2:
+            sybil_score = 0.3
+        elif num_accounts <= 4:
+            sybil_score = 0.6
+        else:
+            sybil_score = 1.0
+        
+        # Factor 3: Ratings extremos (1 o 5)
+        extreme_ratio = behavior_features.get('extreme_ratio', 0)
+        if extreme_ratio <= 0.3:
+            extreme_score = 0.0
+        elif extreme_ratio <= 0.7:
+            extreme_score = (extreme_ratio - 0.3) / 0.4 * 0.5
+        else:
+            extreme_score = 0.5 + (extreme_ratio - 0.7) / 0.3 * 0.5
+        
+        # Factor 4: Varianza alta
+        variance = behavior_features.get('variance', 0)
+        if variance <= 1.5:
+            variance_score = 0.0
+        elif variance <= 3.0:
+            variance_score = (variance - 1.5) / 1.5 * 0.5
+        else:
+            variance_score = 0.5 + min(0.5, (variance - 3.0) / 2.0 * 0.5)
+        
+        # Combinar con pesos
+        combined = (
+            0.15 * model_score +
+            0.20 * sybil_score +
+            0.40 * extreme_score +
+            0.25 * variance_score
+        )
+        
+        # Bonus por multiples senales fuertes
+        strong_signals = sum([
+            1 if sybil_score > 0.5 else 0,
+            1 if extreme_score > 0.5 else 0,
+            1 if variance_score > 0.5 else 0
+        ])
+        if strong_signals >= 2:
+            combined = min(1.0, combined + 0.15)
+        
+        return min(1.0, max(0.0, combined))
         
         # Ordenar por probabilidad descendente
         scores.sort(key=lambda x: x.bot_probability, reverse=True)
