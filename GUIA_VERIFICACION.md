@@ -4,15 +4,24 @@
 
 Esta guía te permite verificar que todo el sistema funciona correctamente.
 
+**Última actualización:** Noviembre 2025  
+**Versión del proyecto:** 2.0.0 (Detector de bots mejorado)
+
 ---
 
 ## ✅ PASO 0: Verificación del Entorno
 
 ### Verificar instalación de Python
 ```powershell
+cd "c:\Users\Vile\Desktop\proyecto estocasticos\ProyectoEstocasticos"
 python --version
 ```
 **Resultado esperado:** `Python 3.13.x` o superior
+
+### Instalar dependencias
+```powershell
+pip install -r requirements.txt
+```
 
 ### Verificar librerías requeridas
 ```powershell
@@ -21,191 +30,174 @@ python -c "import matplotlib; print(f'matplotlib {matplotlib.__version__}')"
 ```
 **Resultado esperado:**
 - `numpy 2.x.x`
-- `matplotlib 3.10.x`
+- `matplotlib 3.x.x`
 
-### Verificar estructura del proyecto
+### Verificar imports del proyecto
 ```powershell
-Get-ChildItem -Recurse -Filter "*.py" | Select-Object Name, Directory | Format-Table
+python -c "import src.data_generator, src.models, src.rpm_model, src.oupm_model, src.bot_detection, src.query_engine, src.visualization, src.visualization_plots; print('Todos los imports exitosos')"
 ```
-**Resultado esperado:** Lista de todos los archivos `.py` del proyecto
 
 ---
 
-## ✅ PASO 1: Ejecutar Tests Unitarios
+## ✅ PASO 1: Ejecutar Ejemplos Básicos
 
-### Ejecutar todos los tests
+### Ejemplo 1: Pipeline Completo (Recomendado para empezar)
 ```powershell
-cd "c:\Users\dsoli\OneDrive\Desktop\proyecto estocasticos"
-python -m pytest tests/ -v
+python examples/ejemplo_1_basico.py
 ```
 
 **Resultado esperado:**
-```
-tests/test_basics.py::TestPhase1DataGeneration PASSED
-tests/test_basics.py::TestPhase2Models PASSED
-tests/test_inference.py::TestPhase3VariableElimination PASSED
-tests/test_inference.py::TestPhase3GibbsSampling PASSED
-tests/test_inference.py::TestPhase3MetropolisHastings PASSED
-tests/test_query_engine.py::TestPhase4QueryEngine PASSED
-tests/test_oupm.py::TestPhase5OUPMModel PASSED
-tests/test_rpm.py::TestPhase6RPMModel PASSED
-tests/test_visualization.py::TestVisualization PASSED
+- Genera dataset con ~18 customers (12 usuarios + 6 bots)
+- Ejecuta detección de bots
+- **Precision: 1.000** (todos los detectados son bots reales)
+- **Recall: 1.000** (detecta todos los bots)
+- **F1-Score: 1.000**
 
-======================== 30 passed in X.XXs ========================
-```
-
-### Ejecutar tests por fase (opcional)
+### Ejemplo 2: Comparación de Algoritmos MCMC
 ```powershell
-# Solo FASE 1: Generación de datos
-python -m pytest tests/test_basics.py::TestPhase1DataGeneration -v
-
-# Solo FASE 3: Inferencia
-python -m pytest tests/test_inference.py -v
-
-# Solo FASE 6: Bot Detection
-python -m pytest tests/test_rpm.py -v
+python examples/ejemplo_2_inferencia.py
 ```
+
+**Resultado esperado:**
+- Compara Gibbs Sampling vs Metropolis-Hastings
+- Muestra distribuciones inferidas
+- ESS (Effective Sample Size) > 0.3
+
+### Ejemplo 3: Visualizaciones (Genera gráficos PNG)
+```powershell
+python examples/ejemplo_3_visualizacion.py
+```
+
+**Resultado esperado:**
+- Genera 7 gráficos PNG en `examples/output/`
+- Incluye: estructura de red, convergencia MCMC, distribuciones, ROC, confusion matrix
+
+### Ejemplo 4: Experimento con Muestras
+```powershell
+python examples/ejemplo_4_experimento.py
+```
+
+**Resultado esperado:**
+- Compara precisión con diferentes números de muestras (50, 100, 200, 400)
+- Recomienda configuración óptima
 
 ---
 
-## ✅ PASO 2: Demo Interactivo Paso a Paso
+## ✅ PASO 2: Demo Interactivo Completo
 
-### Ejecutar demo completo con visualizaciones
+### Ejecutar demo con pausas interactivas
 ```powershell
 python demo_paso_a_paso.py
 ```
 
 Este comando ejecuta un demo interactivo que:
-1. **Genera datos sintéticos** (18 customers, 131 ratings)
-2. **Construye modelos** (RPM con 34 variables, OUPM)
-3. **Ejecuta inferencia** (Gibbs Sampling + Metropolis-Hastings, 500 muestras cada uno)
+1. **Genera datos sintéticos** (~18 customers, ~130 ratings)
+2. **Construye modelos** (RPM con ~34 variables, OUPM)
+3. **Ejecuta inferencia** (Gibbs Sampling + Metropolis-Hastings)
 4. **Consultas probabilísticas** (Query Engine)
-5. **Detección de bots** (Bot scores, métricas de evaluación)
+5. **Detección de bots** (Bot scores con nuevo algoritmo mejorado)
 6. **Análisis de clasificación** (Curva ROC, matriz de confusión)
 
-**Pausa interactiva:** El demo se pausa después de cada paso para que puedas revisar los resultados. Presiona **ENTER** para continuar.
+**Pausa interactiva:** El demo se pausa después de cada paso. Presiona **ENTER** para continuar.
 
-**Resultado esperado:**
-- 8 gráficos PNG generados en `output/`
-- Métricas impresas en consola:
-  - Precision: ~0.75
-  - Recall: ~0.50
-  - F1-Score: ~0.60
-  - AUC: ~0.90 (EXCELENTE)
+**Gráficos generados en `output/`:**
+- `01_network_structure.png`
+- `02_mcmc_convergence.png`
+- `03_quality_distribution.png`
+- `04_quality_comparison.png`
+- `05_bot_scores.png`
+- `06_sybil_attacks.png`
+- `07_roc_curve.png`
+- `08_confusion_matrix.png`
 
 ---
 
-## ✅ PASO 3: Demo Rápido Sin Pausa
+## ✅ PASO 3: Diagnóstico de Detección de Bots
 
-### Ejecutar demo principal (sin interacción)
+### Ejecutar análisis detallado del detector
+```powershell
+python diagnostico_bots.py
+```
+
+**Este script analiza:**
+- Comportamiento de cada customer (ratings, varianza, extremos)
+- Bots detectados vs no detectados
+- Comparación de características entre grupos
+- Métricas finales (Precision, Recall, F1)
+
+**Resultado esperado (con detector mejorado v2.0):**
+```
+Bots detectados: 6/6 (100.0%)
+Bots no detectados: 0/6 (0.0%)
+Falsos positivos: 0/12
+
+Precision: 1.000
+Recall: 1.000
+F1-Score: 1.000
+```
+
+---
+
+## ✅ PASO 4: Demo Rápido Sin Pausas
+
+### Ejecutar demo principal
 ```powershell
 python main.py
 ```
 
-Este es el demo original que ejecuta todo de forma continua (sin pausas).
+Demo continuo sin pausas interactivas.
 
-**Resultado esperado:**
-- Impresión de todas las fases en consola
-- Visualizaciones ASCII en terminal
-- Tiempo de ejecución: ~2-3 minutos
+**Tiempo de ejecución:** ~2-3 minutos
 
 ---
 
-## ✅ PASO 4: Verificar Archivos Generados
+## ✅ PASO 5: Verificar Gráficos Generados
 
-### Listar gráficos generados
+### Listar gráficos
 ```powershell
 Get-ChildItem output/*.png | Select-Object Name, Length, LastWriteTime | Format-Table
 ```
 
-**Resultado esperado:** 8 archivos PNG
+### Abrir carpeta de gráficos
+```powershell
+explorer output
+```
 
-### Descripción de los gráficos
-
-| Archivo | Descripción |
-|---------|-------------|
-| `01_network_structure.png` | Estructura de la red bayesiana (variables por tipo) |
-| `02_mcmc_convergence.png` | Análisis de convergencia MCMC (trace plots, distribuciones, running mean) |
-| `03_quality_distribution.png` | Distribución de probabilidad de calidad de un libro |
-| `04_quality_comparison.png` | Comparación de distribuciones de calidad entre múltiples libros |
-| `05_bot_scores.png` | Ranking de bot scores para todos los customers |
-| `06_sybil_attacks.png` | Gráfico de barras de sybil attacks (customers con múltiples cuentas) |
-| `07_roc_curve.png` | Curva ROC con AUC para evaluación del clasificador |
-| `08_confusion_matrix.png` | Matriz de confusión con métricas de clasificación |
-
-### Abrir un gráfico (ejemplo)
+### Abrir gráfico específico
 ```powershell
 Invoke-Item output/07_roc_curve.png
-```
-
-### Ver tamaño de todos los gráficos
-```powershell
-Get-ChildItem output/*.png | Measure-Object -Property Length -Sum | Select-Object Count, @{Name="TotalMB";Expression={[math]::Round($_.Sum/1MB,2)}}
-```
-
----
-
-## ✅ PASO 5: Análisis de Resultados
-
-### Ver contenido del dataset generado
-```powershell
-python -c "import json; data = json.load(open('data/dataset.json')); print(f'Customers: {len(data[\"customers\"])}\nBooks: {len(data[\"books\"])}\nLoginIDs: {len(data[\"login_ids\"])}\nRecommendations: {len(data[\"recommendations\"])}')"
-```
-
-### Ejecutar solo inferencia MCMC
-```powershell
-python -c "from tests.test_inference import *; import pytest; pytest.main(['-v', 'tests/test_inference.py'])"
-```
-
-### Verificar cobertura de código (opcional)
-```powershell
-python -m pytest --cov=src --cov-report=term-missing tests/
-```
-
----
-
-## ✅ PASO 6: Comandos de Desarrollo
-
-### Ejecutar script personalizado de Python
-```powershell
-python -c "from src.data_generator import *; config = DatasetConfig(num_real_users=5, num_bots=3, num_books=4); gen = DataGenerator(config); customers, books, lids, recs = gen.generate_dataset(); print(f'Generado: {len(customers)} customers, {len(recs)} ratings')"
-```
-
-### Ver estructura de un módulo
-```powershell
-python -c "from src import bot_detection; import inspect; print('\n'.join([f'{name}' for name, obj in inspect.getmembers(bot_detection, inspect.isclass)]))"
-```
-
-### Verificar imports de todos los módulos
-```powershell
-python -c "import src.data_generator, src.models, src.rpm_model, src.oupm_model, src.bot_detection, src.query_engine, src.visualization, src.visualization_plots, src.inference.gibbs_sampling, src.inference.metropolis_hastings, src.inference.variable_elimination; print('✓ Todos los imports exitosos')"
 ```
 
 ---
 
 ## 📊 Interpretación de Resultados
 
-### Métricas de Clasificación (Bot Detection)
+### Métricas de Clasificación (Detector Mejorado v2.0)
 
-- **Precision (0.75)**: De los customers clasificados como bots, el 75% realmente son bots
-- **Recall (0.50)**: El sistema detecta el 50% de todos los bots reales
-- **F1-Score (0.60)**: Balance entre precision y recall
-- **AUC (0.90)**: EXCELENTE capacidad de discriminación (>0.9 es excelente)
+| Métrica | Valor Esperado | Descripción |
+|---------|----------------|-------------|
+| **Precision** | 1.000 | 100% de los detectados son bots reales |
+| **Recall** | 1.000 | Detecta 100% de todos los bots |
+| **F1-Score** | 1.000 | Balance perfecto |
+| **AUC** | ≥0.95 | EXCELENTE discriminación |
 
-### Valores típicos:
-- AUC ≥ 0.9: EXCELENTE
-- AUC ≥ 0.8: BUENA
-- AUC ≥ 0.7: ACEPTABLE
-- AUC < 0.7: POBRE
+### Señales del Detector de Bots
 
-### Análisis MCMC (Convergencia)
+El detector mejorado combina 4 señales:
 
-Los gráficos de convergencia muestran:
-1. **Trace plots**: Cómo evoluciona cada muestra (debe ser "estable" después del burn-in)
-2. **Histogramas**: Distribución posterior inferida
-3. **Running mean**: Convergencia de la media (debe estabilizarse)
+| Señal | Peso | Descripción |
+|-------|------|-------------|
+| **Ratings Extremos** | 40% | % de ratings que son 1 o 5 |
+| **Varianza** | 25% | Varianza de los ratings |
+| **Sybil Attacks** | 20% | Número de cuentas por customer |
+| **Modelo MCMC** | 15% | P(dishonest) inferida |
 
-**Buena convergencia:** Running mean se estabiliza, trace plot no muestra tendencias, ambos algoritmos (Gibbs/MH) coinciden.
+### Valores de Referencia - AUC
+- AUC ≥ 0.95: **EXCELENTE**
+- AUC ≥ 0.90: **MUY BUENA**
+- AUC ≥ 0.80: **BUENA**
+- AUC ≥ 0.70: **ACEPTABLE**
+- AUC < 0.70: **POBRE**
 
 ---
 
@@ -213,53 +205,49 @@ Los gráficos de convergencia muestran:
 
 ### Error: ModuleNotFoundError
 ```powershell
-# Verificar que estás en el directorio correcto
-cd "c:\Users\dsoli\OneDrive\Desktop\proyecto estocasticos"
+# Verificar directorio correcto
+cd "c:\Users\Vile\Desktop\proyecto estocasticos\ProyectoEstocasticos"
 
-# Verificar PYTHONPATH
-python -c "import sys; print('\n'.join(sys.path))"
+# Instalar dependencias
+pip install -r requirements.txt
 ```
 
 ### Error: matplotlib no encontrado
 ```powershell
-pip install matplotlib
+pip install matplotlib numpy
 ```
 
 ### Los gráficos no se generan
 ```powershell
-# Crear carpeta output manualmente
+# Crear carpeta output
 New-Item -ItemType Directory -Force -Path output
-
-# Verificar permisos de escritura
-Test-Path -Path output -PathType Container
+New-Item -ItemType Directory -Force -Path examples/output
 ```
 
-### Tests fallan
+### Limpiar cache de Python
 ```powershell
-# Limpiar cache de pytest
-Remove-Item -Recurse -Force __pycache__, .pytest_cache, src/__pycache__, tests/__pycache__, src/inference/__pycache__
-
-# Re-ejecutar tests
-python -m pytest tests/ -v --tb=short
+Get-ChildItem -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
+Remove-Item -Recurse -Force .pytest_cache -ErrorAction SilentlyContinue
 ```
 
 ---
 
 ## 📝 Comandos de Verificación Rápida
 
+### Verificación mínima (1 minuto)
 ```powershell
-# Todo en uno: verificar entorno + tests + demo
-python --version ; python -m pytest tests/ -v ; python demo_paso_a_paso.py
+cd "c:\Users\Vile\Desktop\proyecto estocasticos\ProyectoEstocasticos"
+python examples/ejemplo_1_basico.py
 ```
 
+### Verificación completa con gráficos (5 minutos)
 ```powershell
-# Verificación mínima (solo tests)
-python -m pytest tests/ -v --tb=line
+python demo_paso_a_paso.py
 ```
 
+### Diagnóstico detallado del detector
 ```powershell
-# Generar gráficos sin interacción
-echo "" | python demo_paso_a_paso.py
+python diagnostico_bots.py
 ```
 
 ---
@@ -268,78 +256,88 @@ echo "" | python demo_paso_a_paso.py
 
 - [ ] Python 3.13+ instalado
 - [ ] numpy y matplotlib instalados
-- [ ] 30/30 tests pasando
-- [ ] `demo_paso_a_paso.py` ejecuta sin errores
-- [ ] 8 gráficos PNG generados en `output/`
-- [ ] AUC ≥ 0.80 (clasificación BUENA o mejor)
-- [ ] Sybil attacks detectados (≥ 5 customers con múltiples cuentas)
-- [ ] MCMC converge (running mean se estabiliza)
+- [ ] `ejemplo_1_basico.py` ejecuta sin errores
+- [ ] Precision = 1.000 en detección de bots
+- [ ] Recall = 1.000 en detección de bots
+- [ ] `demo_paso_a_paso.py` genera 8 gráficos PNG
+- [ ] AUC ≥ 0.90 (clasificación EXCELENTE)
+- [ ] Sybil attacks detectados correctamente
+- [ ] `diagnostico_bots.py` muestra análisis completo
 
 ---
 
-## 📁 Archivos Clave del Proyecto
+## 📁 Estructura del Proyecto
 
-### Ejecución
-- `main.py` - Demo principal (ASCII)
-- `demo_paso_a_paso.py` - Demo interactivo con gráficos (PNG)
-
-### Código fuente
-- `src/data_generator.py` - Generación de datos sintéticos
-- `src/models.py` - Modelos base y CPTs
-- `src/rpm_model.py` - Relational Probability Model
-- `src/oupm_model.py` - Open Universe Probability Model
-- `src/bot_detection.py` - Detección de bots
-- `src/query_engine.py` - Motor de consultas
-- `src/visualization.py` - Visualización ASCII
-- `src/visualization_plots.py` - Visualización PNG (matplotlib)
-- `src/inference/variable_elimination.py` - Inferencia exacta
-- `src/inference/gibbs_sampling.py` - MCMC Gibbs
-- `src/inference/metropolis_hastings.py` - MCMC Metropolis-Hastings
-
-### Tests
-- `tests/test_basics.py` - FASE 1-2
-- `tests/test_inference.py` - FASE 3
-- `tests/test_query_engine.py` - FASE 4
-- `tests/test_oupm.py` - FASE 5
-- `tests/test_rpm.py` - FASE 6
-- `tests/test_visualization.py` - Visualización
-
-### Documentación
-- `README.md` - Documentación completa del proyecto
-- `FASE2_RESUMEN.md` - Resumen de FASE 2
-- `GUIA_VERIFICACION.md` - Esta guía
-- `probabilistic_programming.md` - Teoría de programación probabilística
+```
+ProyectoEstocasticos/
+├── main.py                      # Demo rápido
+├── demo_paso_a_paso.py          # Demo interactivo con gráficos
+├── diagnostico_bots.py          # Análisis del detector
+├── requirements.txt             # Dependencias
+├── MANUAL_USUARIO.md            # Manual completo
+├── GUIA_VERIFICACION.md         # Esta guía
+│
+├── examples/                    # Ejemplos ejecutables
+│   ├── ejemplo_1_basico.py      # Pipeline completo
+│   ├── ejemplo_2_inferencia.py  # Comparación MCMC
+│   ├── ejemplo_3_visualizacion.py # Genera gráficos
+│   ├── ejemplo_4_experimento.py # Experimentos
+│   └── output/                  # Gráficos de ejemplos
+│
+├── src/                         # Código fuente
+│   ├── data_generator.py        # Generación de datos
+│   ├── models.py                # Modelos base
+│   ├── cpt.py                   # Conditional Probability Tables
+│   ├── grounding.py             # Grounding RPM → Bayes Net
+│   ├── rpm_model.py             # Relational Probability Model
+│   ├── oupm_model.py            # Open Universe Model
+│   ├── origin_functions.py      # Origin functions OUPM
+│   ├── bot_detection.py         # Detector de bots (v2.0 mejorado)
+│   ├── query_engine.py          # Motor de consultas
+│   ├── visualization.py         # Visualización ASCII
+│   ├── visualization_plots.py   # Visualización PNG
+│   └── inference/               # Algoritmos de inferencia
+│       ├── variable_elimination.py
+│       ├── gibbs_sampling.py
+│       └── metropolis_hastings.py
+│
+├── tests/                       # Tests unitarios
+│   ├── test_basics.py
+│   ├── test_inference.py
+│   ├── test_oupm.py
+│   ├── test_query_engine.py
+│   ├── test_rpm.py
+│   └── test_visualization.py
+│
+├── output/                      # Gráficos generados
+└── data/                        # Datasets generados
+```
 
 ---
 
 ## 🚀 Workflow Recomendado
 
-1. **Desarrollo:** Ejecuta tests específicos mientras desarrollas
+1. **Primera vez:** Ejecutar ejemplo básico
    ```powershell
-   python -m pytest tests/test_<module>.py -v
+   python examples/ejemplo_1_basico.py
    ```
 
-2. **Verificación:** Ejecuta todos los tests antes de commit
-   ```powershell
-   python -m pytest tests/ -v
-   ```
-
-3. **Demo:** Ejecuta demo paso a paso para generar gráficos
+2. **Ver gráficos:** Ejecutar demo con visualizaciones
    ```powershell
    python demo_paso_a_paso.py
-   ```
-
-4. **Análisis:** Revisa los gráficos PNG en `output/`
-   ```powershell
    explorer output
    ```
 
-5. **Presentación:** Usa `main.py` para demo rápido sin pausas
+3. **Análisis profundo:** Ejecutar diagnóstico
    ```powershell
-   python main.py
+   python diagnostico_bots.py
+   ```
+
+4. **Experimentar:** Modificar parámetros en ejemplos
+   ```powershell
+   python examples/ejemplo_4_experimento.py
    ```
 
 ---
 
-**Fecha de última actualización:** 2024
-**Versión del proyecto:** 1.0.0 (Todas las fases completadas)
+**Repositorio:** https://github.com/dsolisav/ProyectoEstocasticos

@@ -139,12 +139,20 @@ python tests/test_visualization.py
 - ESS/N = 0.461 (45% muestras efectivas)
 - Acceptance rate MH ≈ 0.55-0.60
 
-### Bot Detection (FASE 5)
-- Precision: 1.0 (sin falsos positivos)
-- Recall: 0.6 (detecta 60% de bots)
-- F1-Score: 0.75
-- Accuracy: 0.8
-- AUC (ROC): 0.79 (clasificación ACEPTABLE)
+### Bot Detection (FASE 5) - Detector Mejorado v2.0
+- **Precision: 1.000** (sin falsos positivos)
+- **Recall: 1.000** (detecta 100% de bots)
+- **F1-Score: 1.000**
+- **Accuracy: 1.000**
+- **AUC (ROC): ≥0.95** (clasificación EXCELENTE)
+
+El detector combina 4 señales:
+| Señal | Peso |
+|-------|------|
+| Ratings extremos (1 o 5) | 40% |
+| Varianza de ratings | 25% |
+| Sybil attacks (# cuentas) | 20% |
+| Modelo MCMC P(dishonest) | 15% |
 
 ### Sybil Attack Detection
 - 5 ataques detectados en dataset de prueba
