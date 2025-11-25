@@ -250,10 +250,13 @@ class ROCPlotter:
         """
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
         
-        # Matriz de confusión
+        # Matriz de confusión (formato estándar)
+        # Filas = Actual, Columnas = Predicted
+        # [Actual Bot, Pred Bot] = TP,  [Actual Bot, Pred Real] = FN
+        # [Actual Real, Pred Bot] = FP, [Actual Real, Pred Real] = TN
         cm = np.array([
-            [metrics.true_positives, metrics.false_positives],
-            [metrics.false_negatives, metrics.true_negatives]
+            [metrics.true_positives, metrics.false_negatives],
+            [metrics.false_positives, metrics.true_negatives]
         ])
         
         im = ax1.imshow(cm, cmap='Blues', alpha=0.8)
