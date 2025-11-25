@@ -10,6 +10,9 @@ from dataclasses import dataclass
 import random
 import math
 
+# Para reproducibilidad
+DEFAULT_SEED = None
+
 
 @dataclass
 class MHSample:
@@ -182,7 +185,8 @@ class MetropolisHastings:
               num_samples: int = 1000,
               burn_in: int = 100,
               proposal: str = 'random_flip',  # 'random_flip' o 'gibbs_style'
-              chain_id: int = 0) -> List[MHSample]:
+              chain_id: int = 0,
+              random_seed: Optional[int] = None) -> List[MHSample]:
         """
         Ejecutar Metropolis-Hastings sampling.
         
@@ -192,10 +196,15 @@ class MetropolisHastings:
             burn_in: Iteraciones a descartar
             proposal: Tipo de proposal distribution
             chain_id: ID de cadena
+            random_seed: Semilla para reproducibilidad (opcional)
             
         Returns:
             Lista de muestras
         """
+        # Fijar semilla si se proporciona
+        if random_seed is not None:
+            random.seed(random_seed)
+        
         # Inicializar
         current_state = self._initialize_state(evidence)
         current_prob = self._compute_state_probability(current_state)

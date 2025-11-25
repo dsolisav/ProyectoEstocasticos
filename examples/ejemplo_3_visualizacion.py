@@ -15,9 +15,15 @@ Salida: Gráficos PNG en examples/output/
 
 import sys
 import os
+import random
+
 # Agregar directorio raíz al path
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
+
+# Fijar semilla global para reproducibilidad
+RANDOM_SEED = 42
+random.seed(RANDOM_SEED)
 
 from src.data_generator import DataGenerator, DatasetConfig
 from src.rpm_model import RPMModel

@@ -144,7 +144,8 @@ class GibbsSampling:
               num_samples: int = 1000,
               burn_in: int = 100,
               thinning: int = 1,
-              chain_id: int = 0) -> List[GibbsSample]:
+              chain_id: int = 0,
+              random_seed: Optional[int] = None) -> List[GibbsSample]:
         """
         Ejecutar Gibbs Sampling.
         
@@ -154,10 +155,15 @@ class GibbsSampling:
             burn_in: Número de iteraciones a descartar al inicio
             thinning: Tomar 1 muestra cada `thinning` iteraciones
             chain_id: ID de la cadena (para múltiples cadenas)
+            random_seed: Semilla para reproducibilidad (opcional)
             
         Returns:
             Lista de muestras
         """
+        # Fijar semilla si se proporciona
+        if random_seed is not None:
+            random.seed(random_seed)
+        
         # Inicializar estado
         current_state = self._initialize_state(evidence)
         
