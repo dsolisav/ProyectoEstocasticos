@@ -1,41 +1,39 @@
-"""
-Sistema de Recomendación con Detección de Bots
-Demo completo mostrando todas las fases del proyecto
+﻿"""
+Demo Principal del Sistema de Recomendacion con Deteccion de Bots
+
+Este script ejecuta un pipeline completo que demuestra:
+1. Generacion de datos sinteticos
+2. Construccion de modelos probabilisticos (RPM y OUPM)
+3. Inferencia con MCMC (Gibbs Sampling y Metropolis-Hastings)
+4. Deteccion de bots y sybil attacks
+5. Evaluacion de metricas
 """
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from src.data_generator import DataGenerator, DatasetConfig
-from src.models import Customer, Book, LoginID, Recommendation, EntityType
+from src.models import EntityType
 from src.rpm_model import RPMModel
 from src.oupm_model import OUPMModel
 from src.bot_detection import BotDetector
 from src.query_engine import QueryEngine
-from src.visualization import (
-    BayesianNetworkVisualizer,
-    DistributionPlotter,
-    ROCCurveAnalyzer,
-    ConvergenceAnalyzer
-)
-from src.inference.gibbs_sampling import GibbsSampling
-from src.inference.metropolis_hastings import MetropolisHastings
+from src.visualization import BayesianNetworkVisualizer
 
 
 def main():
-    """Demo completo del sistema."""
-    print("\n" + "="*70)
-    print("  SISTEMA DE RECOMENDACIÓN CON DETECCIÓN DE BOTS")
-    print("  Programación Probabilística - Capítulo 18")
-    print("="*70)
+    print("=" * 70)
+    print("  SISTEMA DE RECOMENDACION CON DETECCION DE BOTS")
+    print("  Programacion Probabilistica - Capitulo 18")
+    print("=" * 70)
     
     # ========================================================================
-    # FASE 1: Generación de Datos
+    # FASE 1: Generacion de Datos Sinteticos
     # ========================================================================
-    print("\n" + "="*70)
-    print("FASE 1: GENERACIÓN DE DATOS SINTÉTICOS")
-    print("="*70)
+    print("\n" + "=" * 70)
+    print("FASE 1: GENERACION DE DATOS SINTETICOS")
+    print("=" * 70)
     
     config = DatasetConfig(
         num_real_users=10,
@@ -50,186 +48,153 @@ def main():
     generator = DataGenerator(config)
     customers, books, login_ids, recommendations = generator.generate_dataset()
     
-    print(f"\n✓ Dataset generado:")
-    print(f"  Customers: {len(customers)} ({sum(1 for c in customers if c.entity_type == EntityType.REAL_USER)} users, {sum(1 for c in customers if c.entity_type == EntityType.BOT)} bots)")
+    num_users = sum(1 for c in customers if c.entity_type == EntityType.REAL_USER)
+    num_bots = sum(1 for c in customers if c.entity_type == EntityType.BOT)
+    
+    print(f"\n[OK] Dataset generado:")
+    print(f"  Customers: {len(customers)} ({num_users} users, {num_bots} bots)")
     print(f"  Books: {len(books)}")
     print(f"  LoginIDs: {len(login_ids)}")
     print(f"  Recommendations: {len(recommendations)}")
     
     # ========================================================================
-    # FASE 2-3: Modelos Probabilísticos (RPM y OUPM)
+    # FASE 2-3: Modelos Probabilisticos (RPM y OUPM)
     # ========================================================================
-    print("\n" + "="*70)
-    print("FASE 2-3: CONSTRUCCIÓN DE MODELOS PROBABILÍSTICOS")
-    print("="*70)
+    print("\n" + "=" * 70)
+    print("FASE 2-3: CONSTRUCCION DE MODELOS PROBABILISTICOS")
+    print("=" * 70)
     
     # RPM Model
     rpm = RPMModel()
     grounded_rpm = rpm.ground_model(customers, books, recommendations)
-    print(f"\n✓ RPM Model grounded:")
+    print(f"\n[OK] RPM Model grounded:")
     print(f"  Variables: {len(grounded_rpm.variables)}")
-    print(f"  Observaciones: {len(grounded_rpm.observations)}")
-    
-    # Visualizar estructura
-    visualizer = BayesianNetworkVisualizer()
-    network_viz = visualizer.visualize_network(grounded_rpm)
-    print("\n" + network_viz)
     
     # OUPM Model
-    oupm = OUPMModel(lambda_customers=len(customers), lambda_bots=5.0)
-    print(f"\n✓ OUPM Model creado:")
-    print(f"  Origin functions: {oupm.origin_function}")
-    print(f"  Variables: Quality, Honest, Recommendation")
+    oupm = OUPMModel()
+    print(f"\n[OK] OUPM Model creado")
+    print(f"  Soporta: Identity Uncertainty, Existence Uncertainty")
     
     # ========================================================================
-    # FASE 4: Algoritmos de Inferencia
+    # FASE 4: Inferencia MCMC
     # ========================================================================
-    print("\n" + "="*70)
-    print("FASE 4: INFERENCIA PROBABILÍSTICA")
-    print("="*70)
+    print("\n" + "=" * 70)
+    print("FASE 4: INFERENCIA MCMC")
+    print("=" * 70)
     
-    print("\n[1] Gibbs Sampling...")
-    gibbs = GibbsSampling(grounded_rpm)
-    gibbs_samples = gibbs.sample(
-        evidence={},
-        num_samples=500,
-        burn_in=100
-    )
-    print(f"✓ {len(gibbs_samples)} muestras generadas")
-    
-    print("\n[2] Metropolis-Hastings...")
-    mh = MetropolisHastings(grounded_rpm)
-    mh_samples = mh.sample(
-        evidence={},
-        num_samples=500,
-        burn_in=100,
-        proposal='gibbs_style'
-    )
-    print(f"✓ {len(mh_samples)} muestras generadas")
-    
-    # Comparar convergencia
-    var_name = f"Quality_{books[0].book_id}"
-    print(f"\n[3] Análisis de convergencia para {var_name}:")
-    
-    analyzer = ConvergenceAnalyzer()
-    gibbs_assignments = [s.assignment for s in gibbs_samples]
-    mh_assignments = [s.assignment for s in mh_samples]
-    convergence_report = analyzer.compare_algorithms(
-        gibbs_assignments,
-        mh_assignments,
-        var_name
-    )
-    print(convergence_report)
-    
-    # ========================================================================
-    # FASE 5: Query Engine y Bot Detection
-    # ========================================================================
-    print("\n" + "="*70)
-    print("FASE 5: DETECCIÓN DE BOTS Y CONSULTAS")
-    print("="*70)
-    
-    # Query Engine
-    print("\n[1] Query Engine - Inferencia de calidades...")
     query_engine = QueryEngine(grounded_rpm)
     
-    # Consultar calidad de primer libro
-    quality_result = query_engine.query_marginal(
-        variable=var_name,
-        evidence={},
-        method='gibbs',
-        num_samples=300
-    )
+    # Consultar calidad de un libro
+    book_var = f"Quality_{books[0].book_id}"
+    if book_var in grounded_rpm.variables:
+        print(f"\nConsultando: P({book_var} | Evidence)")
+        print(f"  Calidad real: {books[0].true_quality}")
+        
+        result = query_engine.query_marginal(
+            variable=book_var,
+            evidence={},
+            method='gibbs',
+            num_samples=500,
+            burn_in=100
+        )
+        
+        print(f"\n  Distribucion inferida (Gibbs):")
+        for val, prob in sorted(result.distribution.items()):
+            bar = "#" * int(prob * 30)
+            marker = " <-- TRUE" if val == books[0].true_quality else ""
+            print(f"    Quality={val}: {bar} {prob:.3f}{marker}")
     
-    plotter = DistributionPlotter()
-    quality_plot = plotter.plot_distribution(
-        quality_result.distribution,
-        title=f"P({var_name} | Evidence)"
-    )
-    print(quality_plot)
+    # ========================================================================
+    # FASE 5: Deteccion de Bots
+    # ========================================================================
+    print("\n" + "=" * 70)
+    print("FASE 5: DETECCION DE BOTS")
+    print("=" * 70)
     
-    # Bot Detection
-    print("\n[2] Bot Detection - Scoring customers...")
     detector = BotDetector(rpm, detection_threshold=0.5)
     bot_scores = detector.score_customers(
-        customers,
-        books,
-        recommendations,
-        login_ids,
-        num_samples=300
+        customers=customers,
+        books=books,
+        recommendations=recommendations,
+        login_ids=login_ids,
+        num_samples=200
     )
     
-    print(f"\n✓ Scores calculados para {len(bot_scores)} customers")
-    print("\nTop 5 posibles bots:")
-    sorted_scores = sorted(bot_scores, key=lambda x: x.bot_probability, reverse=True)
-    for i, score in enumerate(sorted_scores[:5], 1):
-        print(f"  {i}. {score.customer_id}: P(bot)={score.bot_probability:.3f}, "
-              f"Ground truth={score.entity_type.value}, "
-              f"Predicción={score.prediction.value}, "
-              f"Cuentas={score.num_accounts}")
+    print(f"\n[OK] Scores calculados para {len(bot_scores)} customers")
     
-    # Evaluation Metrics
-    print("\n[3] Métricas de evaluación...")
+    # Top 5 posibles bots
+    print("\nTop 5 posibles bots:")
+    for i, score in enumerate(bot_scores[:5]):
+        is_bot = score.entity_type == EntityType.BOT
+        real_type = "BOT" if is_bot else "USER"
+        pred_type = "BOT" if score.prediction == EntityType.BOT else "USER"
+        correct = "[OK]" if (is_bot and score.prediction == EntityType.BOT) or \
+                           (not is_bot and score.prediction != EntityType.BOT) else "[X]"
+        print(f"  {i+1}. {score.customer_id:15} | P(bot)={score.bot_probability:.3f} | "
+              f"Real={real_type:4} | Pred={pred_type:4} | Cuentas={score.num_accounts} {correct}")
+    
+    # Metricas
     metrics = detector.evaluate(bot_scores)
     
-    print(f"\n✓ Métricas:")
-    print(f"  Precision: {metrics.precision:.3f}")
-    print(f"  Recall: {metrics.recall:.3f}")
-    print(f"  F1-Score: {metrics.f1_score:.3f}")
-    print(f"  Accuracy: {metrics.accuracy:.3f}")
+    print(f"\nMetricas de evaluacion:")
+    print(f"  Precision:  {metrics.precision:.3f}")
+    print(f"  Recall:     {metrics.recall:.3f}")
+    print(f"  F1-Score:   {metrics.f1_score:.3f}")
+    print(f"  Accuracy:   {metrics.accuracy:.3f}")
+    
     print(f"\n  Confusion Matrix:")
-    print(f"    TP={metrics.true_positives}, FP={metrics.false_positives}")
-    print(f"    FN={metrics.false_negatives}, TN={metrics.true_negatives}")
+    print(f"    True Positives (TP):  {metrics.true_positives}")
+    print(f"    False Positives (FP): {metrics.false_positives}")
+    print(f"    True Negatives (TN):  {metrics.true_negatives}")
+    print(f"    False Negatives (FN): {metrics.false_negatives}")
     
     # ========================================================================
-    # FASE 6: Visualización y Análisis
+    # FASE 6: Sybil Attacks
     # ========================================================================
-    print("\n" + "="*70)
-    print("FASE 6: VISUALIZACIÓN Y ANÁLISIS")
-    print("="*70)
+    print("\n" + "=" * 70)
+    print("FASE 6: DETECCION DE SYBIL ATTACKS")
+    print("=" * 70)
     
-    # ROC Curve
-    print("\n[1] Curva ROC...")
-    roc_analyzer = ROCCurveAnalyzer()
+    sybil_attacks = detector.detect_sybil_attacks(login_ids, min_accounts=2)
     
-    score_list = [s.bot_probability for s in bot_scores]
-    label_list = [s.entity_type == EntityType.BOT for s in bot_scores]
-    
-    thresholds, tpr_list, fpr_list = roc_analyzer.compute_roc_curve(score_list, label_list)
-    auc = roc_analyzer.compute_auc(tpr_list, fpr_list)
-    
-    roc_plot = roc_analyzer.plot_roc_curve(tpr_list, fpr_list, auc)
-    print(roc_plot)
-    
-    # Sybil Attack Detection
-    print("\n[2] Detección de Sybil Attacks...")
-    sybil_dict = detector.detect_sybil_attacks(login_ids, min_accounts=2)
-    
-    print(f"\n✓ {len(sybil_dict)} customers con múltiples cuentas:")
-    sorted_sybils = sorted(sybil_dict.items(), key=lambda x: len(x[1]), reverse=True)
-    for i, (cust_id, accounts) in enumerate(sorted_sybils[:5], 1):
+    print(f"\n[OK] Detectados {len(sybil_attacks)} customers con multiples cuentas:")
+    for cust_id, accounts in sorted(sybil_attacks.items(), 
+                                     key=lambda x: len(x[1]), reverse=True)[:5]:
         customer = next((c for c in customers if c.customer_id == cust_id), None)
-        entity_type = customer.entity_type.value if customer else "unknown"
-        print(f"  {i}. {cust_id} ({entity_type}): {len(accounts)} cuentas")
+        if customer:
+            ctype = "BOT" if customer.entity_type == EntityType.BOT else "USER"
+            print(f"  - {cust_id:15} ({ctype}): {len(accounts)} cuentas")
     
     # ========================================================================
-    # RESUMEN FINAL
+    # Resumen Final
     # ========================================================================
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("RESUMEN FINAL")
-    print("="*70)
+    print("=" * 70)
     
-    print(f"\n✓ Todas las fases completadas exitosamente:")
-    print(f"  FASE 1: Dataset generado ({len(customers)} customers, {len(recommendations)} ratings)")
-    print(f"  FASE 2: RPM Model ({len(grounded_rpm.variables)} variables)")
-    print(f"  FASE 3: OUPM Model (origin functions implementadas)")
-    print(f"  FASE 4: Inferencia (Gibbs, MH, convergencia analizada)")
-    print(f"  FASE 5: Bot Detection (Precision={metrics.precision:.3f}, Recall={metrics.recall:.3f})")
-    print(f"  FASE 6: Visualización (AUC={auc:.3f}, {len(sybil_dict)} customers con múltiples cuentas)")
-    
-    print(f"\n✓ Sistema de recomendación con detección de bots operacional!")
-    print("="*70 + "\n")
+    print(f"""
+Sistema de Recomendacion con Deteccion de Bots
+----------------------------------------------
+Dataset:
+  - {len(customers)} customers ({num_users} usuarios, {num_bots} bots)
+  - {len(books)} libros
+  - {len(recommendations)} recomendaciones
+  - {len(login_ids)} cuentas (LoginIDs)
+
+Modelo RPM:
+  - {len(grounded_rpm.variables)} variables
+  
+Deteccion de Bots:
+  - Precision: {metrics.precision:.3f}
+  - Recall: {metrics.recall:.3f}
+  - F1-Score: {metrics.f1_score:.3f}
+  - Sybil attacks detectados: {len(sybil_attacks)}
+
+[OK] Demo completado exitosamente!
+""")
 
 
 if __name__ == "__main__":
     main()
+
 
