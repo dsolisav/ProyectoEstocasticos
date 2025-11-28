@@ -223,9 +223,6 @@ python examples/escenario_3_sybil_attacks.py
 
 # Ver gráficos
 explorer examples\output
-
-# Tests (opcional)
-python -m pytest tests/ -v
 ```
 
 ---
