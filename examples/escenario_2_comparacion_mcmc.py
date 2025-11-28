@@ -32,21 +32,18 @@ from src.visualization_plots import DistributionPlotter
 
 
 def main():
-    print("="*70)
-    print("  ESCENARIO 2: COMPARACIÓN DE ALGORITMOS MCMC")
-    print("="*70)
+    print("\n" + "="*60)
+    print("   ESCENARIO 2: Comparacion de algoritmos MCMC")
+    print("="*60)
     
     output_dir = os.path.join(os.path.dirname(__file__), 'output')
     os.makedirs(output_dir, exist_ok=True)
     
-    # =========================================
-    # CONFIGURACIÓN DEL EXPERIMENTO
-    # =========================================
-    print("\n[CONFIGURACIÓN]")
-    print("  - Algoritmos: Gibbs Sampling vs Metropolis-Hastings")
-    print("  - Muestras: 500 por algoritmo")
-    print("  - Burn-in: 100 muestras descartadas")
-    print("  - Variable: Calidad de un libro (Quality)")
+    # Configuracion
+    print("\nConfiguracion:")
+    print("  - Gibbs Sampling vs Metropolis-Hastings")
+    print("  - 500 muestras, 100 burn-in")
+    print("  - Variable objetivo: Quality de un libro")
     
     config = DatasetConfig(
         num_real_users=8,
@@ -55,10 +52,8 @@ def main():
         random_seed=42
     )
     
-    # =========================================
-    # PASO 1: Preparar datos y modelo
-    # =========================================
-    print("\n[PASO 1] Preparando datos y modelo...")
+    # Preparar datos
+    print("\nPreparando modelo...")
     generator = DataGenerator(config)
     customers, books, login_ids, recommendations = generator.generate_dataset()
     
@@ -71,13 +66,11 @@ def main():
     true_quality = book.true_quality
     
     print(f"  Dataset: {len(customers)} customers, {len(recommendations)} ratings")
-    print(f"  Variable a inferir: {var_name}")
-    print(f"  Calidad real: {true_quality}")
+    print(f"  Inferir: {var_name}")
+    print(f"  Valor real: {true_quality}")
     
-    # =========================================
-    # PASO 2: Ejecutar Gibbs Sampling
-    # =========================================
-    print("\n[PASO 2] Ejecutando Gibbs Sampling...")
+    # Gibbs Sampling
+    print("\nEjecutando Gibbs Sampling...")
     start = time.time()
     gibbs_result = query_engine.query_marginal(
         variable=var_name,
@@ -88,19 +81,17 @@ def main():
     gibbs_time = time.time() - start
     
     print(f"  Tiempo: {gibbs_time:.2f}s")
-    print(f"  Distribución inferida:")
+    print(f"  Distribucion:")
     gibbs_max_val = max(gibbs_result.distribution.items(), key=lambda x: x[1])
     for value in sorted(gibbs_result.distribution.keys()):
         prob = gibbs_result.distribution[value]
-        bar = "█" * int(prob * 40)
-        marker = " <-- TRUE" if value == true_quality else ""
+        bar = "#" * int(prob * 30)
+        marker = " <- real" if value == true_quality else ""
         marker += " (max)" if value == gibbs_max_val[0] else ""
         print(f"    Q={value}: {bar} {prob:.3f}{marker}")
     
-    # =========================================
-    # PASO 3: Ejecutar Metropolis-Hastings
-    # =========================================
-    print("\n[PASO 3] Ejecutando Metropolis-Hastings...")
+    # Metropolis-Hastings
+    print("\nEjecutando Metropolis-Hastings...")
     start = time.time()
     mh_result = query_engine.query_marginal(
         variable=var_name,
@@ -111,46 +102,39 @@ def main():
     mh_time = time.time() - start
     
     print(f"  Tiempo: {mh_time:.2f}s")
-    print(f"  Distribución inferida:")
+    print(f"  Distribucion:")
     mh_max_val = max(mh_result.distribution.items(), key=lambda x: x[1])
     for value in sorted(mh_result.distribution.keys()):
         prob = mh_result.distribution[value]
-        bar = "█" * int(prob * 40)
-        marker = " <-- TRUE" if value == true_quality else ""
+        bar = "#" * int(prob * 30)
+        marker = " <- real" if value == true_quality else ""
         marker += " (max)" if value == mh_max_val[0] else ""
         print(f"    Q={value}: {bar} {prob:.3f}{marker}")
     
-    # =========================================
-    # PASO 4: Comparación
-    # =========================================
-    print("\n[COMPARACIÓN]")
-    print(f"  Tiempo Gibbs:    {gibbs_time:.2f}s")
-    print(f"  Tiempo MH:       {mh_time:.2f}s")
+    # Comparacion
+    print("\n--- COMPARACION ---")
+    print(f"  Gibbs:    {gibbs_time:.2f}s")
+    print(f"  MH:       {mh_time:.2f}s")
     
     # Calcular diferencia entre distribuciones
     common_keys = set(gibbs_result.distribution.keys()) & set(mh_result.distribution.keys())
     diff = sum(abs(gibbs_result.distribution.get(k, 0) - mh_result.distribution.get(k, 0)) 
                for k in common_keys)
     
-    print(f"  Diferencia (L1): {diff:.4f}")
+    print(f"  Diferencia L1: {diff:.4f}")
     
     if diff < 0.15:
-        convergence = "CONVERGEN - Resultados muy similares"
+        print("  -> Convergen bien")
     elif diff < 0.3:
-        convergence = "CONVERGEN PARCIALMENTE - Diferencias moderadas"
+        print("  -> Convergen parcialmente")
     else:
-        convergence = "NO CONVERGEN - Considerar más muestras"
+        print("  -> No convergen, necesitan mas muestras")
     
-    print(f"  Estado: {convergence}")
-    
-    # =========================================
-    # GRÁFICOS
-    # =========================================
-    print("\n[GRÁFICOS]")
+    # Graficos
+    print("\nGenerando graficos...")
     
     dist_plotter = DistributionPlotter()
     
-    # Gráfico 1: Distribución Gibbs
     path1 = os.path.join(output_dir, 'esc2_distribucion_gibbs.png')
     dist_plotter.plot_distribution(
         gibbs_result.distribution,
@@ -158,9 +142,8 @@ def main():
         xlabel="Nivel de Calidad",
         output_path=path1
     )
-    print(f"  Guardado: {path1}")
+    print(f"  -> {path1}")
     
-    # Gráfico 2: Distribución MH
     path2 = os.path.join(output_dir, 'esc2_distribucion_mh.png')
     dist_plotter.plot_distribution(
         mh_result.distribution,
@@ -168,37 +151,28 @@ def main():
         xlabel="Nivel de Calidad",
         output_path=path2
     )
-    print(f"  Guardado: {path2}")
+    print(f"  -> {path2}")
     
-    # =========================================
-    # CONCLUSIÓN
-    # =========================================
-    print("\n" + "="*70)
-    print("  CONCLUSIÓN")
-    print("="*70)
+    # Conclusion
+    print("\n" + "="*60)
     
     gibbs_correct = gibbs_max_val[0] == true_quality
     mh_correct = mh_max_val[0] == true_quality
     
-    print(f"""
-  Resultados de inferencia:
-  
+    print(f"""Resultados:
+    
   Gibbs Sampling:
-    - Valor más probable: {gibbs_max_val[0]} (P={gibbs_max_val[1]:.3f})
-    - Valor real: {true_quality}
-    - Correcto: {"Sí" if gibbs_correct else "No"}
+    Valor inferido: {gibbs_max_val[0]} (P={gibbs_max_val[1]:.3f})
+    Correcto: {"Si" if gibbs_correct else "No"}
     
   Metropolis-Hastings:
-    - Valor más probable: {mh_max_val[0]} (P={mh_max_val[1]:.3f})
-    - Valor real: {true_quality}
-    - Correcto: {"Sí" if mh_correct else "No"}
+    Valor inferido: {mh_max_val[0]} (P={mh_max_val[1]:.3f})
+    Correcto: {"Si" if mh_correct else "No"}
   
-  Análisis:
-  - Gibbs Sampling muestrea directamente de distribuciones condicionales
-  - Metropolis-Hastings usa mecanismo accept/reject
-  - Ambos son métodos MCMC válidos para inferencia aproximada
+Gibbs muestrea de las condicionales directamente.
+MH usa accept/reject, puede necesitar mas muestras.
   
-  Gráficos generados en: examples/output/
+Graficos guardados en examples/output/
 """)
 
 

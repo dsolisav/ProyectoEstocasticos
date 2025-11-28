@@ -191,15 +191,6 @@ detector = BotDetector(rpm, detection_threshold=0.4)  # Detecta más bots
 
 ## Preguntas Frecuentes
 
-### ¿Cuánto tiempo tarda?
-
-| Comando | Tiempo |
-|---------|--------|
-| `main.py` | 2-3 min |
-| Escenario 1 | ~1 min |
-| Escenario 2 | ~1 min |
-| Escenario 3 | ~1 min |
-
 ### ¿Por qué Gibbs y MH dan resultados diferentes?
 
 Con pocas muestras, MH puede no converger completamente. Aumentar `num_samples` mejora la convergencia.

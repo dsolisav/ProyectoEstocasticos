@@ -45,6 +45,7 @@ htmlcov/
 output/*.png
 data/dataset.json
 examples/output/*.png
+INSTRUCCIONES_EQUIPO.md
 
 # Jupyter Notebook
 .ipynb_checkpoints

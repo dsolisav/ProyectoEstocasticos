@@ -36,21 +36,19 @@ import matplotlib.pyplot as plt
 
 
 def main():
-    print("="*70)
-    print("  ESCENARIO 3: DETECCIÓN DE SYBIL ATTACKS")
-    print("="*70)
+    print("\n" + "="*60)
+    print("   ESCENARIO 3: Deteccion de Sybil Attacks")
+    print("="*60)
     
     output_dir = os.path.join(os.path.dirname(__file__), 'output')
     os.makedirs(output_dir, exist_ok=True)
     
-    # =========================================
-    # CONFIGURACIÓN DEL EXPERIMENTO
-    # =========================================
-    print("\n[CONFIGURACIÓN]")
+    # Configuracion
+    print("\nConfiguracion:")
     print("  - 10 usuarios reales")
-    print("  - 5 bots con alta probabilidad de múltiples cuentas")
-    print("  - prob_bot_multiple_accounts = 0.8 (80%)")
-    print("  - max_accounts_per_bot = 6")
+    print("  - 5 bots")
+    print("  - 80% probabilidad de multiples cuentas para bots")
+    print("  - Maximo 6 cuentas por bot")
     
     config = DatasetConfig(
         num_real_users=10,
@@ -61,16 +59,14 @@ def main():
         random_seed=42
     )
     
-    # =========================================
-    # PASO 1: Generar datos
-    # =========================================
-    print("\n[PASO 1] Generando datos sintéticos...")
+    # Generar datos
+    print("\nGenerando datos...")
     generator = DataGenerator(config)
     customers, books, login_ids, recommendations = generator.generate_dataset()
     
-    print(f"  Customers: {len(customers)}")
-    print(f"  LoginIDs (cuentas): {len(login_ids)}")
-    print(f"  Ratings: {len(recommendations)}")
+    print(f"  {len(customers)} customers")
+    print(f"  {len(login_ids)} cuentas (LoginIDs)")
+    print(f"  {len(recommendations)} ratings")
     
     # Contar cuentas por customer
     accounts_per_customer = {}
@@ -78,25 +74,20 @@ def main():
         cid = lid.origin.customer_id
         accounts_per_customer[cid] = accounts_per_customer.get(cid, 0) + 1
     
-    # =========================================
-    # PASO 2: Detectar Sybil Attacks
-    # =========================================
-    print("\n[PASO 2] Detectando Sybil Attacks...")
+    # Detectar Sybil
+    print("\nBuscando sybil attacks...")
     rpm = RPMModel()
     grounded = rpm.ground_model(customers, books, recommendations)
     
     detector = BotDetector(rpm, detection_threshold=0.5)
     sybil_attacks = detector.detect_sybil_attacks(login_ids, min_accounts=2)
     
-    print(f"  Detectados: {len(sybil_attacks)} customers con múltiples cuentas")
+    print(f"  Encontrados: {len(sybil_attacks)} con multiples cuentas")
     
-    # =========================================
-    # RESULTADOS
-    # =========================================
-    print("\n[RESULTADOS]")
-    print("\n  Customers con múltiples cuentas (Sybil Attacks):")
+    # Resultados
+    print("\n--- RESULTADOS ---")
+    print("\nCustomers con multiples cuentas:")
     
-    # Ordenar por número de cuentas
     sorted_sybil = sorted(sybil_attacks.items(), key=lambda x: len(x[1]), reverse=True)
     
     bots_detected = 0
@@ -111,22 +102,22 @@ def main():
             else:
                 users_with_multiple += 1
             
-            print(f"    {customer_id:12s} ({tipo:4s}): {len(accounts)} cuentas")
-            # Mostrar algunas cuentas
+            print(f"  {customer_id:12s} ({tipo}): {len(accounts)} cuentas")
             account_list = list(accounts)[:3]
-            if len(accounts) > 3:
-                print(f"      Cuentas: {', '.join(account_list)}... (+{len(accounts)-3} más)")
+            extras = len(accounts) - 3
+            if extras > 0:
+                print(f"    -> {', '.join(account_list)}... (+{extras})")
             else:
-                print(f"      Cuentas: {', '.join(account_list)}")
+                print(f"    -> {', '.join(account_list)}")
     
-    # Estadísticas
-    print("\n  Estadísticas:")
-    print(f"    Total sybil attacks: {len(sybil_attacks)}")
-    print(f"    Bots con múltiples cuentas: {bots_detected}")
-    print(f"    Usuarios con múltiples cuentas: {users_with_multiple}")
+    # Estadisticas
+    print(f"\nResumen:")
+    print(f"  Sybil attacks totales: {len(sybil_attacks)}")
+    print(f"  Bots con multiples cuentas: {bots_detected}")
+    print(f"  Usuarios con multiples cuentas: {users_with_multiple}")
     
-    # Distribución de cuentas
-    print("\n  Distribución de cuentas por tipo:")
+    # Promedios
+    print(f"\nPromedio de cuentas:")
     bot_accounts = []
     user_accounts = []
     for c in customers:
@@ -139,20 +130,17 @@ def main():
     avg_bot = sum(bot_accounts) / len(bot_accounts) if bot_accounts else 0
     avg_user = sum(user_accounts) / len(user_accounts) if user_accounts else 0
     
-    print(f"    Bots:     promedio {avg_bot:.1f} cuentas/bot (max: {max(bot_accounts) if bot_accounts else 0})")
-    print(f"    Usuarios: promedio {avg_user:.1f} cuentas/usuario (max: {max(user_accounts) if user_accounts else 0})")
+    print(f"  Bots: {avg_bot:.1f} cuentas (max {max(bot_accounts) if bot_accounts else 0})")
+    print(f"  Usuarios: {avg_user:.1f} cuentas (max {max(user_accounts) if user_accounts else 0})")
     
-    # =========================================
-    # GRÁFICOS
-    # =========================================
-    print("\n[GRÁFICOS]")
+    # Graficos
+    print("\nGenerando graficos...")
     
-    # Gráfico 1: Sybil Attacks
     if sybil_attacks:
         bot_plotter = BotDetectionPlotter()
         path1 = os.path.join(output_dir, 'esc3_sybil_attacks.png')
         bot_plotter.plot_sybil_attacks(sybil_attacks, customers, path1)
-        print(f"  Guardado: {path1}")
+        print(f"  -> {path1}")
     
     # Gráfico 2: Cuentas por tipo (custom)
     path2 = os.path.join(output_dir, 'esc3_cuentas_por_tipo.png')
@@ -187,33 +175,20 @@ def main():
     plt.tight_layout()
     plt.savefig(path2, dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"  Guardado: {path2}")
+    print(f"  -> {path2}")
     
-    # =========================================
-    # CONCLUSIÓN
-    # =========================================
-    print("\n" + "="*70)
-    print("  CONCLUSIÓN")
-    print("="*70)
-    print(f"""
-  Detección de Sybil Attacks:
+    # Conclusion
+    print("\n" + "="*60)
+    print(f"""Sybil Attack = un bot crea multiples cuentas para manipular.
   
-  Un Sybil Attack ocurre cuando un actor malicioso (bot) crea
-  múltiples identidades (LoginIDs) para manipular el sistema.
+Resultados:
+  - {bots_detected}/{len([c for c in customers if c.entity_type == EntityType.BOT])} bots tienen multiples cuentas
+  - {users_with_multiple} usuarios tambien (no necesariamente malicioso)
   
-  Resultados:
-  - {bots_detected} de {len([c for c in customers if c.entity_type == EntityType.BOT])} bots usan múltiples cuentas
-  - {users_with_multiple} usuarios legítimos también tienen múltiples cuentas
-  
-  Observaciones:
-  - Los bots tienden a tener MÁS cuentas que los usuarios reales
-  - Promedio bots: {avg_bot:.1f} cuentas vs usuarios: {avg_user:.1f} cuentas
-  - El sistema identifica correctamente los sybil attacks
-  
-  El detector combina el número de cuentas con otras señales
-  (ratings extremos, baja varianza) para identificar bots.
-  
-  Gráficos generados en: examples/output/
+Los bots promedian {avg_bot:.1f} cuentas vs {avg_user:.1f} de usuarios.
+Esto confirma que tienden a crear mas identidades.
+
+Graficos guardados en examples/output/
 """)
 
 
